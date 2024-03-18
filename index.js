@@ -3,10 +3,12 @@ const express = require('express');
 const app = express();
 const bcrypt = require('bcrypt'); // For password hashing
 const jwt = require('jsonwebtoken'); // For generating and verifying JWT tokens
+const cors = require('cors'); // Import the cors middleware
 
 // Remove dependency on body-parser
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cors()); // Enable CORS for all requests
 
 const sequelize = new Sequelize('postgresql://ecommerce_owner:Q8DChNd7Hbuk@ep-holy-math-a1qtcjfx.ap-southeast-1.aws.neon.tech/ecommerce?sslmode=require');
 
