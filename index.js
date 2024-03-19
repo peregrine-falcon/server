@@ -41,11 +41,29 @@ async function startServer() {
         await sequelize.sync(); // This will sync your defined models with the database
 
         // Define routes
+        // app.post('/user/register', async (req, res) => {
+        //     try {
+        //         const { name, email, password } = req.body;
+        //         const hashedPassword = await bcrypt.hash(password, 10);
+        //         const user = await User.create({ name, email, password:hashedPassword });
+        //         res.status(201).json({ status: "success", data: user });
+        //     } catch (error) {
+        //         console.error('Error registering user:', error);
+        //         res.status(500).json({ status: "error", message: "Unable to register user" });
+        //     }
+        // });
+
         app.post('/user/register', async (req, res) => {
             try {
                 const { name, email, password } = req.body;
+                // Check if the email is already registered
+                const existingUser = await User.findOne({ where: { email } });
+                if (existingUser) {
+                    return res.status(400).json({ status: "error", message: "Email is already in use" });
+                }
+                // If the email is not already registered, proceed with user creation
                 const hashedPassword = await bcrypt.hash(password, 10);
-                const user = await User.create({ name, email, password:hashedPassword });
+                const user = await User.create({ name, email, password: hashedPassword });
                 res.status(201).json({ status: "success", data: user });
             } catch (error) {
                 console.error('Error registering user:', error);
