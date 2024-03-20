@@ -33,6 +33,42 @@ const User = sequelize.define('User', {
     }
 });
 
+const Category = sequelize.define('Category', {
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    }
+});
+
+const userCategory = sequelize.define('userInterest', {
+    userId:{
+        type: DataTypes.INTEGER,
+        references:{
+            model: "Users",
+            key: "id"
+        },
+        allowNull:false       
+    },
+    categoryId:{
+        type: DataTypes.INTEGER,
+        references:{
+            model: "Categories",
+            key: "id"
+        },
+        allowNull:false 
+    },
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    }
+});
+
 async function startServer() {
     try {
         await sequelize.authenticate();
@@ -107,6 +143,71 @@ async function startServer() {
             }
         });
 
+        app.get('/category', verifyToken ,async (req, res) => {
+            try {
+                // Fetch all categories
+                const categories = await Category.findAll();
+        
+                // Fetch user's category associations
+                const userCategoryRecords = await userCategory.findAll({
+                    where: {
+                        userId: req.userId
+                    }
+                });
+        
+                // Create a map to store user's category associations
+                const userCategoriesMap = {};
+                userCategoryRecords.forEach(record => {
+                    userCategoriesMap[record.categoryId] = true;
+                });
+        
+                // Add a property to each category indicating if it's associated with the user
+                const categoriesWithAssociation = categories.map(category => {
+                    return {
+                        id: category.id,
+                        name: category.name,
+                        isAssociated: userCategoriesMap[category.id] || false
+                    };
+                });
+        
+                res.status(200).json({ status: "success", data: categoriesWithAssociation });
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+                res.status(500).json({ status: "error", message: "Unable to fetch categories" });
+            }
+        });
+
+        app.post('/user/category', verifyToken, async (req, res) => {
+            try {
+                const { activeCategoryIds } = req.body;
+        
+                // Validate if activeCategoryIds is an array
+                if (!Array.isArray(activeCategoryIds)) {
+                    return res.status(400).json({ status: "error", message: "activeCategoryIds must be an array" });
+                }
+        
+                // Delete existing associations for the user
+                await userCategory.destroy({
+                    where: {
+                        userId: req.userId
+                    }
+                });
+        
+                // Create associations for active categories
+                const promises = activeCategoryIds.map(async categoryId => {
+                    await userCategory.create({ userId: req.userId, categoryId });
+                });
+        
+                await Promise.all(promises);
+        
+                res.status(200).json({ status: "success", message: "User category associations updated successfully" });
+            } catch (error) {
+                console.error('Error updating user category associations:', error);
+                res.status(500).json({ status: "error", message: "Unable to update user category associations" });
+            }
+        });
+
+        
         app.listen(3000, () => {
             console.log('Server is running on port 3000');
         });
